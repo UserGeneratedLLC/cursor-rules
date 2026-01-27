@@ -1,0 +1,179 @@
+---
+description: Project code style conventions
+alwaysApply: true
+---
+
+# Code Style
+
+## File Headers
+
+- Always use `--!strict` at the top of every Luau file
+- For performance-critical modules, add `--!native` and `--!optimize 2`
+- Leave one empty line after headers before code begins
+
+```luau
+--!strict
+--!native
+--!optimize 2
+```
+
+## Line Length
+
+- When editing lines that reach 80 characters, break them onto multiple lines
+- Function parameters, long chains, and expressions should be split across lines
+- Only apply this to lines being actively edited, not existing code
+
+## Section Banners
+
+- Use 30-dash banners on each side to separate major sections
+- Common section order: Types → Constants → Algorithm/Utils → Class → Module
+
+```luau
+------------------------------ Section Name ------------------------------
+```
+
+## Naming Conventions
+
+- Use camelCase for local functions, variables, and parameters
+- Use PascalCase for module functions and class methods
+- Prefix optional parameters with `_` (e.g., `_timeout: number?`), then normalize to local without prefix
+- Use ALL_CAPS for true constants only
+
+```luau
+local function processData(
+    value: string,
+    _timeout: number?
+): boolean
+    local timeout = _timeout or 5
+    -- ...
+end
+```
+
+## Conventions
+
+- Always type function parameters and return values—this enables inference everywhere else
+- Don't redundantly annotate locals when the type is inferred (e.g., `local x = 3` not `local x: number = 3`)
+- Use `T?` for optional types
+- Use generics including `P...` and `R...` for variadic type packs
+- Validate with `assert`; normalize optional `_args` to locals
+- `pcall` callbacks; log errors with `warn()`
+- Use `error("TypeName", 2)` pattern for assertion errors (level 2 points to caller)
+- Freeze module tables and Class tables; optionally freeze `self`
+- Use local functions to optimize for inlining
+- Static helpers and singletons belong on the module table
+- Always use `table.freeze()` for final module exports
+
+## Documentation
+
+- Use `--[[...]]` for multi-line docstrings above functions
+- Include `@param` and `@return` descriptions for complex functions
+- Keep comments concise; code should be self-documenting
+
+```luau
+--[[
+    Validates and normalizes input data.
+    @param value Input value to validate
+    @param rules Validation rules to apply
+    @return Normalized value or error
+]]
+local function validate(value: string, rules: {Rule}): Result
+    -- ...
+end
+```
+
+## OOP Pattern
+
+For single-class modules, see canonical example:
+`ReplicatedStorage/UserGenerated/Collections/LeftistHeap.luau`
+
+For multi-class modules, prefix type names with the class name:
+`ReplicatedStorage/UserGenerated/Concurrency/Bindable.luau`
+
+### Type Structure
+
+```luau
+type Fields<self> = { ... }
+type Functions<self> = { ... }
+type PrivateFields<self> = Fields<self> & { ... }
+type PrivateFunctions<self> = Functions<self> & { ... }
+
+export type Type = Fields<Type> & Functions<Type>
+type Private = PrivateFields<Private> & PrivateFunctions<Private>
+```
+
+For generic classes with variadic type packs:
+
+```luau
+type Fields<self, P..., R...> = { ... }
+type Private<P... = ...any, R... = ...any> = 
+    PrivateFields<Private<P..., R...>, P..., R...>
+    & PrivateFunctions<Private<P..., R...>, P..., R...>
+```
+
+### Class Implementation
+
+```luau
+local Class = {} :: PrivateFunctions<Private>
+local Metatable = table.freeze({ __index = Class })
+
+-- Local functions for inlining, then assign to Class
+local function Foo(self: Private, ...): T
+    ...
+end
+Class.Foo = Foo
+
+table.freeze(Class)
+```
+
+### Module Export
+
+```luau
+local function IsA(v: Type): boolean
+    return type(v) == "table" and getmetatable(v :: any) == Metatable
+end
+
+local function Assert(v: Type): Type
+    if not IsA(v) then error("<ClassName>", 2) end
+    return v
+end
+
+local module = {}
+
+function module.new(...): Type
+    local fields: PrivateFields<Private> = { ... }
+    local self: Private = setmetatable(fields, Metatable) :: any
+    -- ...init...
+    return self
+end
+
+module.IsA = IsA
+module.Assert = Assert
+
+return table.freeze(module)
+```
+
+## Type Safety
+
+- Strive for zero type errors in every file for good static analysis
+- Avoid `:: any` unless absolutely necessary (e.g., metatable assignment)
+- Do not fix existing type errors unless explicitly asked
+
+```luau
+-- Only use :: any when required, such as complex setmetatable
+local self: Private = setmetatable(fields, Metatable) :: any
+```
+
+## Game Logic
+
+Focus on modular, reusable, and simple code:
+
+- Break complex logic into small, testable functions
+- Prefer clarity over micro-optimizations
+- Keep functions focused on a single responsibility
+- Use descriptive variable names over abbreviated ones
+
+## Validation
+
+For runtime type assertions, see `.cursor/rules/asserts.mdc`.
+
+Especially important for networking—always validate data received from remotes.

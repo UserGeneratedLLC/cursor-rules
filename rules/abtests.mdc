@@ -1,0 +1,162 @@
+---
+description: ABTests module API reference and usage patterns
+alwaysApply: false
+---
+# ABTests Module Usage
+
+## Setup
+
+The ABTests module works on both client and server.
+
+```lua
+local ABTests = require(ReplicatedStorage.UserGenerated.ABTests)
+```
+
+---
+
+## API Reference
+
+### Player Attributes
+
+```lua
+ABTests.GetAttributeAsync(player, "AttributeName", defaultValue)
+```
+Yields until attribute is loaded, returns value or default.
+
+```lua
+ABTests.GetAttribute(player, "AttributeName", defaultValue)
+```
+Returns immediately, never yields. Returns default if not loaded yet.
+
+### Job Attributes
+
+Job attributes use the first player in the server (or LocalPlayer on client). Use for server-wide settings.
+
+```lua
+ABTests.GetJobAttributeAsync("AttributeName", defaultValue)
+```
+Yields until loaded.
+
+```lua
+ABTests.GetJobAttribute("AttributeName", defaultValue)
+```
+Returns immediately, never yields.
+
+### Events
+
+```lua
+ABTests.Loaded:Wait()
+ABTests.Loaded:Connect(function() end)
+```
+Fires when system loads. Use to react to initial load or updates.
+
+```lua
+ABTests.PlayerUpdated:Connect(function(player) end)
+```
+Fires when a player's attributes change at runtime.
+
+---
+
+## Notes
+
+**Default Values:** Can be any Luau type - string, number, boolean, table, etc.
+
+**Async Behavior:** Async methods yield until loaded. Use async for join flows, non-async for gameplay loops and event handlers.
+
+**Client Limitation:** Client can only read LocalPlayer's attributes. Other players always return default.
+
+**How It Works:** You implement the attributes in your code. Backend handles all test configuration (groups, percentages, player/server scoping, etc). Once your attribute implementation is merged, backend configures the test.
+
+---
+
+## Examples
+
+### Player-Level Test (Server)
+
+```lua
+local group = ABTests.GetAttributeAsync(player, "TutorialGroup", "New")
+
+if group == "Old" then
+  local id = AssetId.Place.Dungeon.guide2
+  local opts = Instance.new("TeleportOptions")
+  opts.ShouldReserveServer = true
+  TeleportAPI.TeleportAsync(player, id, opts, { noSave = true })
+
+elseif group == "New" then
+  local id = AssetId.Place.Dungeon.guide
+  local opts = Instance.new("TeleportOptions")
+  opts.ShouldReserveServer = true
+  TeleportAPI.TeleportAsync(player, id, opts, { noSave = true })
+
+elseif group == "None" then
+  if ScheduleAPI.GetPlayerDailyStats(player, "StoryUI") == 0 then
+    task.wait()
+    TEvent.FireRemote("OpenStoryUI", player)
+  end
+end
+```
+
+### Job-Level Test (Server)
+
+```lua
+-- At server startup
+local multiplier = ABTests.GetJobAttributeAsync("DepthMultiplier", 1)
+workspace.Pit.DigSpeed.Value *= multiplier
+
+-- In gameplay loop
+RunService.Heartbeat:Connect(function()
+  local speedBoost = ABTests.GetJobAttribute("GlobalSpeedBoost", 1)
+  updateGameSpeed(speedBoost)
+end)
+```
+
+### Client UI Test
+
+```lua
+local Player = Players.LocalPlayer
+
+local function update()
+  local isVisible = ABTests.GetAttribute(Player, "Shop.NewPromo", false)
+  promoFrame.Visible = isVisible
+  
+  local scale = ABTests.GetAttribute(Player, "Shop.Scale", 1.0)
+  shopUI.Size = UDim2.fromScale(0.5 * scale, 0.6 * scale)
+end
+
+ABTests.Loaded:Connect(update)
+update()
+```
+
+### Overriding Game Data
+
+```lua
+local RebirthDatas = require(ReplicatedStorage.Datas.Rebirth)
+
+local function GetRebirthCost(player: Player, num: number): number
+  local cost = ABTests.GetAttribute(
+    player,
+    `Rebirth.Cost.{num}`,
+    RebirthDatas[num].Requirements.Cash
+  )
+  return cost
+end
+```
+
+### Supported Types
+
+```lua
+-- String
+local variant = ABTests.GetAttribute(player, "Variant", "Control")
+
+-- Number
+local multiplier = ABTests.GetAttribute(player, "DamageMultiplier", 1.5)
+
+-- Boolean
+local enabled = ABTests.GetAttribute(player, "NewFeature", false)
+
+-- Table
+local costs = ABTests.GetAttribute(player, "ShopPrices", {
+  sword = 100,
+  shield = 50
+})
+```

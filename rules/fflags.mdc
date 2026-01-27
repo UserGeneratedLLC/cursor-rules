@@ -1,0 +1,454 @@
+---
+description: FFlags (FastFlags) module API reference and configuration patterns
+alwaysApply: false
+---
+# FastFlags Module Usage
+
+## Setup
+
+The FastFlags module works on both client and server.
+
+```lua
+local FastFlags = require(ReplicatedStorage.UserGenerated.FastFlags)
+```
+
+**Important:** Flags must be registered on the server first. The server code executes and sets up replication, then clients can access replicated flags. A key can only be registered **once** per runtime (client or server). Attempting to register the same key twice will error.
+
+---
+
+## API Reference
+
+### Creating Flags (Server Only)
+
+```lua
+FastFlags.Private(key, assertion, defaultValue)
+```
+Creates a server-only flag. **Cannot be seen or accessed on the client.**
+
+```lua
+FastFlags.Replicated(key, assertion, defaultValue)
+```
+Creates a flag that replicates to all clients. Server must register it first for clients to receive it.
+
+### System State
+
+```lua
+FastFlags.IsLoaded()
+```
+Returns true if the system has loaded initial values from the DataStore.
+
+```lua
+FastFlags.Loaded:Wait()
+FastFlags.Loaded:Connect(function() end)
+```
+Fires when the system loads. Use to react to initial load.
+
+### Validation
+
+```lua
+FastFlags.IsA(value)
+```
+Returns true if the value is a FastFlags.Value.
+
+```lua
+FastFlags.Assert(value)
+```
+Asserts that the value is a FastFlags.Value. Returns the value or errors.
+
+---
+
+## Assertions
+
+The second parameter to `Private`/`Replicated` is an assertion function that validates values. Use functions from the `Asserts` module:
+
+```lua
+local Asserts = require(ReplicatedStorage.UserGenerated.Lang.Asserts)
+```
+
+The assertion validates both the default value at registration and any stored values from the DataStore. If a stored value fails validation, the flag falls back to the default and logs a warning.
+
+### Basic Type Assertions
+
+| Assertion | Description |
+|-----------|-------------|
+| `Asserts.Boolean` | Must be `true` or `false` |
+| `Asserts.String` | Must be a valid UTF-8 string |
+| `Asserts.Number` | Must be a number (allows inf/nan) |
+| `Asserts.Any` | Accepts any value |
+
+### Number Assertions
+
+| Assertion | Description |
+|-----------|-------------|
+| `Asserts.Finite` | Number, excludes inf/nan |
+| `Asserts.FinitePositive` | Number > 0, excludes inf/nan |
+| `Asserts.FiniteNonNegative` | Number >= 0, excludes inf/nan |
+| `Asserts.Integer` | Whole number, excludes inf |
+| `Asserts.IntegerPositive` | Integer >= 1 |
+| `Asserts.IntegerNonNegative` | Integer >= 0 |
+| `Asserts.Range(a, b)` | Number in range [a, b] |
+| `Asserts.IntegerRange(a, b)` | Integer in range [a, b] |
+
+### Collection Assertions
+
+| Assertion | Description |
+|-----------|-------------|
+| `Asserts.Map(keyAssert, valueAssert)` | Dictionary with validated keys/values |
+| `Asserts.Array(valueAssert)` | Array with validated elements |
+| `Asserts.Table({ key = assert, ... })` | Object with specific keys and assertions |
+
+### Combinator Assertions
+
+| Assertion | Description |
+|-----------|-------------|
+| `Asserts.Optional(assert)` | Value or `nil` |
+| `Asserts.AnyOf(assert1, assert2, ...)` | Passes if any assertion succeeds |
+| `Asserts.Set({"a", "b", "c"})` | Must be one of the specified values |
+| `Asserts.Default(assert, default)` | Returns default if `nil`, otherwise validates |
+
+### Examples
+
+```lua
+-- Basic types
+FastFlags.Private("Feature.Enabled", Asserts.Boolean, true)
+FastFlags.Private("Feature.Name", Asserts.String, "default")
+
+-- Numbers with constraints
+FastFlags.Private("Rate.Multiplier", Asserts.FinitePositive, 1.0)
+FastFlags.Private("Rate.Percent", Asserts.Range(0, 1), 0.5)
+FastFlags.Private("Limit.MaxItems", Asserts.IntegerPositive, 100)
+
+-- Collections
+FastFlags.Private("EventChances", 
+  Asserts.Map(Asserts.String, Asserts.FiniteNonNegative), 
+  { PlayerDeath = 0.05 }
+)
+FastFlags.Private("AllowedModes", 
+  Asserts.Array(Asserts.String), 
+  {"Easy", "Normal", "Hard"}
+)
+
+-- Enum-like values with Set
+FastFlags.Private("LogLevel", 
+  Asserts.Set({"Debug", "Info", "Warn", "Error"}), 
+  "Warn"
+)
+
+-- Optional values (can be null in JSON)
+FastFlags.Private("Override.Value", 
+  Asserts.Optional(Asserts.FinitePositive), 
+  nil
+)
+```
+
+### Custom Assertions
+
+You can write custom assertion functions. Return the value if valid, error if invalid:
+
+```lua
+local function AssertLogLevel(value)
+  if value == "Debug" or value == "Info" or value == "Warn" or value == "Error" then
+    return value
+  end
+  error("InvalidLogLevel")
+end
+
+local LogLevel = FastFlags.Replicated("LogLevel", AssertLogLevel, "Warn")
+```
+
+---
+
+## Default Values
+
+The third parameter is the default value used when:
+- The flag hasn't loaded from the DataStore yet
+- The stored value fails assertion validation
+- No value exists in the DataStore
+
+Default values can be any storable Luau type: string, number, boolean, or table. Tables are deep-copied and frozen.
+
+**Important:** `value:Get()` returns the default immediately if not loaded. Use `value:GetAsync()` if you need the actual stored value before proceeding.
+
+---
+
+## Value API
+
+Once you have a flag value, use these methods:
+
+### Getting Values
+
+```lua
+value:Get()
+```
+Returns immediately, never yields. Returns the current value, or the default if not loaded yet. Use this in gameplay loops, event handlers, and anywhere you can't yield.
+
+```lua
+value:GetAsync()
+```
+Yields until the value has loaded from the DataStore, then returns it. Use this at startup or in flows where you need the actual configured value before proceeding.
+
+```lua
+value:IsLoaded()
+```
+Returns true if this specific value has loaded from the DataStore. Useful for conditional logic without yielding.
+
+### Events
+
+```lua
+value.Changed:Connect(function(current, previous) end)
+```
+Fires when the value changes at runtime. Use this to react to live configuration changes without restarting the server.
+
+```lua
+value.Loaded:Connect(function() end)
+```
+Fires once when the system finishes loading from the DataStore. This fires even if the key doesn't exist in the DataStore - in that case, the value remains at the default. Use this for initialization that should wait for the load attempt to complete.
+
+### Properties
+
+```lua
+value.Key         -- The key string used to register this flag
+value.DefaultValue -- The default value provided at registration
+```
+
+### Async vs Non-Async
+
+Use **async** (`GetAsync`) for:
+- Server startup configuration
+- Join flows where the value affects player experience
+- Any code that runs before gameplay begins
+
+Use **non-async** (`Get`) for:
+- Gameplay loops (Heartbeat, Stepped)
+- Event handlers (RemoteEvent, BindableEvent)
+- UI updates
+- Anywhere yielding would cause issues
+
+---
+
+## Notes
+
+**Server Requirement:** For `Replicated` flags, the server code must execute and register the flag. Clients receive the value via replication. If you only register a flag on the client, it won't receive server updates.
+
+**Shared Module Pattern:** Place `Replicated` flags in a shared module under ReplicatedStorage. When the module is required, both server and client register the same key. The server sets up replication, and clients receive updates automatically. This keeps the flag definition in one place.
+
+**Single Registration:** Each key can only be registered once per runtime. Registering the same key twice on server or client will error with `ConflictingKeys`. A shared module naturally handles this since requiring the same module twice returns the cached result.
+
+**Hierarchical Keys:** Keys use dot notation that maps to nested JSON structure. See the Key Paths section below for details.
+
+**Private Visibility:** `Private` flags are server-only. Calling `FastFlags.Private` on the client will error with `ServerOnly`. The client cannot see private flag values.
+
+**Live Updates:** Values can change at runtime when updated in the backend. The server polls the DataStore periodically and pushes updates to clients. Use `value.Changed` to react to these changes without server restarts.
+
+---
+
+## Editing Flags
+
+Edit flags for your game at **https://fflag.ug.xyz/**
+
+### Update Methods
+
+**Immediate Push (MessagingService):** Changes are broadcast to all running servers instantly via MessagingService. Servers receive the update within seconds and push new values to connected clients.
+
+**Slow Push (DataStore):** Changes are written to the DataStore. Servers poll periodically (default 15 minutes) and pick up changes on the next poll cycle. Use this for non-urgent changes or when MessagingService quota is a concern.
+
+The web interface lets you choose which method to use when saving changes.
+
+---
+
+## Key Paths and JSON Structure
+
+Keys use dot notation that maps directly to nested JSON structure in the backend. Each dot represents a level of nesting:
+
+```lua
+-- This key:
+FastFlags.Private("UserGenerated.Saves.AutoSavePeriod", Asserts.FinitePositive, 600)
+```
+
+Maps to this JSON path:
+
+```json
+{
+  "UserGenerated": {
+    "Saves": {
+      "AutoSavePeriod": 600
+    }
+  }
+}
+```
+
+### Supported Value Types
+
+Values can be any JSON-encodable data type:
+
+| Type | Lua | JSON | Example |
+|------|-----|------|---------|
+| Boolean | `true`/`false` | `true`/`false` | `"Enabled": true` |
+| Number | `123`, `1.5` | `123`, `1.5` | `"Rate": 0.5` |
+| String | `"text"` | `"text"` | `"Level": "Warn"` |
+| Null | `nil` | `null` | `"Optional": null` |
+| Array | `{1, 2, 3}` | `[1, 2, 3]` | `"Items": [1, 2]` |
+| Object | `{a=1, b=2}` | `{"a": 1, "b": 2}` | `"Config": {"x": 1}` |
+
+### Example JSON Structure
+
+```jsonc
+{
+  "UserGenerated": {
+    "Logging": {
+      "ClientLevel": "Warn",
+      "ServerLevel": "Info"
+    },
+    "Saves": {
+      "Enabled": true,
+      "AutoSavePeriod": 600
+    },
+    "Analytics": {
+      "PlayerEventChances": {
+        "PlayerDeath": 0.05,
+        "PlayerCoinCollected": 0.01
+      }
+    }
+  }
+}
+```
+
+Corresponding flag registrations:
+
+```lua
+FastFlags.Replicated("UserGenerated.Logging.ClientLevel", Asserts.String, "Warn")
+FastFlags.Private("UserGenerated.Logging.ServerLevel", Asserts.String, "Info")
+FastFlags.Private("UserGenerated.Saves.Enabled", Asserts.Boolean, true)
+FastFlags.Private("UserGenerated.Saves.AutoSavePeriod", Asserts.FinitePositive, 600)
+FastFlags.Private("UserGenerated.Analytics.PlayerEventChances", 
+  Asserts.Map(Asserts.String, Asserts.FiniteNonNegative), 
+  {}
+)
+```
+
+### Key Conflicts
+
+Keys with hierarchical overlap will error. You cannot have both a value and nested object at the same path:
+
+```lua
+-- These would conflict:
+FastFlags.Private("UserGenerated.Saves", Asserts.Boolean, true)      -- value at Saves
+FastFlags.Private("UserGenerated.Saves.Enabled", Asserts.Boolean, true)  -- nested under Saves
+-- Error: ConflictingKeys
+```
+
+---
+
+## Examples
+
+### Private Server Flag
+
+```lua
+local SavesEnabled = FastFlags.Private(
+  "UserGenerated.Saves.Enabled",
+  Asserts.Boolean,
+  true
+)
+
+if SavesEnabled:Get() then
+  -- saves are enabled
+end
+```
+
+### Replicated Flag (Shared Module)
+
+Place `Replicated` flags in a shared module under ReplicatedStorage. Both server and client require the same module:
+
+```lua
+-- ReplicatedStorage/Shared/SomeSharedModule.luau
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local FastFlags = require(ReplicatedStorage.UserGenerated.FastFlags)
+local Asserts = require(ReplicatedStorage.UserGenerated.Lang.Asserts)
+
+local LoggingLevel = FastFlags.Replicated(
+  "UserGenerated.Logging.ClientLevel",
+  Asserts.String,
+  "Warn"
+)
+
+return {
+  LoggingLevel = LoggingLevel,
+}
+```
+
+Then require from server and client code:
+
+```lua
+-- Server or Client script
+local SharedModule = require(ReplicatedStorage.Shared.SomeSharedModule)
+local level = SharedModule.LoggingLevel:Get()
+SharedModule.LoggingLevel.Changed:Connect(function(curr)
+  -- react to changes
+end)
+```
+
+The server must require the module first so replication is set up before clients connect.
+
+### Reacting to Changes
+
+```lua
+local AutoSavePeriod = FastFlags.Private(
+  "UserGenerated.Saves.AutoSavePeriod",
+  Asserts.FinitePositive,
+  900
+)
+
+-- Initial setup
+ProfileStore.SetConstant("AUTO_SAVE_PERIOD", AutoSavePeriod:Get())
+
+-- React to runtime changes
+AutoSavePeriod.Changed:Connect(function(curr)
+  ProfileStore.SetConstant("AUTO_SAVE_PERIOD", curr)
+end)
+```
+
+### Waiting for Load
+
+```lua
+-- Wait for system to load
+FastFlags.Loaded:Wait()
+
+-- Or wait for a specific flag to load
+local SomeFlag = FastFlags.Private("Game.SomeFlag", Asserts.Boolean, false)
+local value = SomeFlag:GetAsync() -- yields until this flag loads
+```
+
+### Table Values
+
+```lua
+local ABTestDefaults = FastFlags.Replicated(
+  "UserGenerated.ABTestDefaults",
+  Asserts.Map(Asserts.String, Asserts.Any),
+  {}
+)
+
+local defaults = ABTestDefaults:Get()
+```
+
+### Full Pattern with Change Handling
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local FastFlags = require(ReplicatedStorage.UserGenerated.FastFlags)
+local Asserts = require(ReplicatedStorage.UserGenerated.Lang.Asserts)
+
+local SpawnRate = FastFlags.Replicated(
+  "Game.SpawnRate",
+  Asserts.FinitePositive,
+  5.0
+)
+
+-- Initial setup using async to ensure loaded value
+local rate = SpawnRate:GetAsync()
+ConfigureSpawner(rate)
+
+-- React to live updates
+SpawnRate.Changed:Connect(function(current, previous)
+  ConfigureSpawner(current)
+end)
+```

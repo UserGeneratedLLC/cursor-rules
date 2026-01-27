@@ -1,0 +1,227 @@
+---
+description: Asserts module API reference for runtime type validation
+alwaysApply: false
+---
+# Asserts Module
+
+Runtime type validation for Luau. Located at `ReplicatedStorage.UserGenerated.Lang.Asserts`.
+
+## Basic Usage
+
+```luau
+local Asserts = require(ReplicatedStorage.UserGenerated.Lang.Asserts)
+
+-- Direct validation (throws on failure)
+local n = Asserts.Integer(someValue)
+local s = Asserts.String(input)
+
+-- Composed validators return functions
+local validatePositiveInt = Asserts.IntegerPositive
+local value = validatePositiveInt(input)
+```
+
+## Primitives
+
+| Function | Description |
+|----------|-------------|
+| `Number(x)` | Any number |
+| `String(x)` | UTF-8 validated string |
+| `RawString(x)` | String without UTF-8 validation |
+| `Boolean(x)` | Boolean value |
+| `Buffer(x)` | Buffer type |
+| `Function(x)` | Function type |
+| `Thread(x)` | Coroutine thread |
+| `Any(x)` | Passthrough, no validation |
+
+## Numbers
+
+| Function | Description |
+|----------|-------------|
+| `Finite(x)` | Excludes NaN and infinity |
+| `FinitePositive(x)` | Finite and > 0 |
+| `FiniteNonNegative(x)` | Finite and >= 0 |
+| `Positive(x)` | > 0 (excludes NaN) |
+| `NonNegative(x)` | >= 0 (excludes NaN) |
+| `Real(x)` | Excludes NaN only |
+| `Integer(x)` | Whole number, finite |
+| `IntegerPositive(x)` | Integer >= 1 |
+| `IntegerNonNegative(x)` | Integer >= 0 |
+| `Index(x)` | Alias for IntegerPositive |
+| `Unsigned32(x)` | 32-bit unsigned integer |
+| `Range(a, b)` | Returns validator for [a, b] |
+| `IntegerRange(a, b)` | Returns validator for integer [a, b] |
+
+## Strings
+
+| Function | Description |
+|----------|-------------|
+| `ASCII(x)` | Printable ASCII only (32-126) |
+| `ASCIIRange(a, b)` | ASCII with length in [a, b] |
+| `StringRange(a, b)` | UTF-8 with char count in [a, b] |
+| `Pattern(pattern)` | Returns validator matching Lua pattern |
+| `HexLower(x)` | Lowercase hex string |
+| `HexUpper(x)` | Uppercase hex string |
+| `Base64(x)` | Valid Base64 encoding |
+| `UUID(x)` | UUID with dashes (36 chars) |
+| `UUIDStripped(x)` | UUID without dashes (32 chars) |
+| `IsoDate(x)` | ISO 8601 date string |
+
+## Roblox Types
+
+| Function | Description |
+|----------|-------------|
+| `Vector2(x)`, `Vector3(x)` | Basic vector validation |
+| `Vector2Finite(x)`, `Vector3Finite(x)` | Vectors with finite components |
+| `Vector2Unit(x)`, `Vector3Unit(x)` | Unit vectors (magnitude ≈ 1) |
+| `Vector3Positive(x)` | All components > 0 |
+| `CFrame(x)`, `CFrameFinite(x)` | CFrame validation |
+| `UDim(x)`, `UDim2(x)`, `Rect(x)` | UI types |
+| `Region3(x)`, `Region3int16(x)` | Region types |
+| `Vector2int16(x)`, `Vector3int16(x)` | Integer vector types |
+
+## Instances
+
+| Function | Description |
+|----------|-------------|
+| `Instance(x)` | Any Instance |
+| `InstanceOf<T>(className)` | Returns validator using IsA |
+| `InstanceClass<T>(className)` | Returns validator for exact ClassName |
+| `Player(x)`, `Model(x)`, `Humanoid(x)` | Specific instance types |
+| `BasePart(x)`, `Part(x)`, `MeshPart(x)` | Part types |
+| `Sound(x)`, `Animation(x)`, `ParticleEmitter(x)` | Other common types |
+
+## Enums
+
+```luau
+-- Validate EnumItem of specific type
+local validateMaterial = Asserts.Enum(Enum.Material)
+local mat = validateMaterial(Enum.Material.Plastic)
+
+-- Validate enum by numeric value
+local validateMaterialValue = Asserts.EnumValue(Enum.Material)
+local matValue = validateMaterialValue(256)
+```
+
+## Collections
+
+### Arrays
+
+```luau
+-- Validate array elements
+local validateNumbers = Asserts.Array(Asserts.Integer)
+local nums = validateNumbers({1, 2, 3})
+
+-- Array with unique elements
+local validateUniqueStrings = Asserts.UniqueArray(Asserts.String)
+
+-- Transform elements (Coerce variants)
+local toIntegers = Asserts.ArrayCoerce(Asserts.ToNumber(Asserts.Integer))
+local nums = toIntegers({"1", "2", "3"}) -- {1, 2, 3}
+```
+
+### Maps
+
+```luau
+-- Validate key-value pairs
+local validateScores = Asserts.Map(Asserts.String, Asserts.Integer)
+local scores = validateScores({alice = 100, bob = 200})
+
+-- Optional length limit
+local limitedMap = Asserts.Map(Asserts.String, Asserts.Any, 10)
+```
+
+### Tables (Structured Objects)
+
+```luau
+-- Validate specific keys (strict - no extra keys allowed)
+local validatePlayer = Asserts.Table({
+    name = Asserts.String,
+    score = Asserts.IntegerNonNegative,
+    active = Asserts.Boolean,
+})
+
+-- Permissive variant (ignores extra keys)
+local validatePartial = Asserts.TablePermissive({
+    id = Asserts.String,
+})
+
+-- Transform values (Coerce variant)
+local parseConfig = Asserts.TableCoerce({
+    port = Asserts.ToNumber(Asserts.IntegerPositive),
+    host = Asserts.String,
+})
+```
+
+## Combinators
+
+```luau
+-- Optional (nil allowed)
+local maybeString = Asserts.Optional(Asserts.String)
+
+-- Default value when nil
+local withDefault = Asserts.Default(Asserts.Integer, 0)
+
+-- Union types (first match wins)
+local stringOrNumber = Asserts.AnyOf(Asserts.String, Asserts.Number)
+
+-- Intersection (all must pass)
+local positiveFinite = Asserts.AllOf(Asserts.Positive, Asserts.Finite)
+
+-- Exact value match
+local validateVersion = Asserts.Equals(1)
+
+-- Set membership
+local validateRarity = Asserts.Set({"Common", "Rare", "Epic", "Legendary"})
+
+-- String to number conversion
+local parseInteger = Asserts.ToNumber(Asserts.Integer)
+```
+
+## Special Validators
+
+```luau
+-- DataStore-compatible types
+Asserts.Storable(data) -- boolean | number | string | buffer | nested tables
+
+-- Network-replicable types (includes Roblox types)
+Asserts.Networkable(data) -- Storable + CFrame, Vector3, Instance, etc.
+
+-- Table without metatable
+Asserts.NoMetatable(t)
+Asserts.AnyTable(t) -- Allows metatables
+```
+
+## Predicate Functions
+
+For conditional logic without throwing:
+
+```luau
+if Asserts.IsFinite(x) then ... end
+if Asserts.IsInteger(x) then ... end
+if Asserts.IsASCII(s) then ... end
+if Asserts.IsCFrameFinite(cf) then ... end
+if Asserts.IsVector2Finite(v) then ... end
+if Asserts.IsVector3Finite(v) then ... end
+```
+
+## Error Handling
+
+Validators throw descriptive errors with key paths:
+
+```luau
+-- Error: "Integer $[2]" (second array element failed)
+-- Error: "String $["name"]" (name field failed)
+-- Error: "Range(1,100) $["config"]["port"]" (nested path)
+```
+
+Use `pcall` to catch validation errors:
+
+```luau
+local success, result = pcall(Asserts.Table({
+    id = Asserts.UUID,
+}), untrustedInput)
+
+if not success then
+    warn("Validation failed:", result)
+end
+```
