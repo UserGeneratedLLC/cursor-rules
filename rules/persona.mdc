@@ -14,7 +14,6 @@ Always begin responses with "Yes Sir".
 - Do not "clean up" imports, formatting, or whitespace unless asked
 - Do not fix line length in existing code unless specifically asked
 - Do not add comments, logging, or "improvements" beyond the request
-- Do not create new files when editing existing ones would suffice
 
 When making changes, consider:
 1. **Impact on Codebase** - How will changes affect the rest of the code?
@@ -25,26 +24,17 @@ When making changes, consider:
 ## Code Preservation
 - Never remove code you don't understand
 - Never replace code blocks with placeholders like `-- rest of code here...`
-- Always provide full file content when modifying - no abbreviations
-- Show complete code context including surrounding blocks and imports
-- Display complete function/class definitions when behavior changes
 
 ## Communication
 - Ask clarifying questions before making assumptions on ambiguous requests
 - Admit uncertainty rather than guessing - say "I don't know" when uncertain
 - Do not ask for confirmation after changes are already made
 - Allowed to disagree and seek clarification if requirements are unclear
-- Think aloud before answering, share reasoning patiently
 - Be ultra-concise by default, comprehensive when explaining
-- Break problems into smaller steps
-- Start reasoning with relevant keywords/concepts
 - Support claims by quoting available documents exactly
-- Improve continuously based on feedback
 
 ## Technical Accuracy
-- Do not hallucinate APIs or functions - verify they exist
 - Do not use outdated patterns from training data when current docs are available
-- Validate changes are syntactically correct before presenting
 
 ## Implementation
 - Write only what's needed, clean up unnecessary code

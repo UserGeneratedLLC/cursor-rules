@@ -418,6 +418,157 @@ local function Counter()
 end
 ```
 
+### Stateful Component Factory with `root()`
+
+For components that need external state updates and manual destruction, use `root()` to create a factory:
+
+```luau
+local function createItemFrame(initialState: Item)
+    local frame: Frame
+    local itemSource: typeof(source(initialState))
+
+    local destroy = root(function()
+        itemSource = source(initialState)
+
+        frame = create "Frame" {
+            Text = function() return itemSource().name end
+        }
+
+        return frame
+    end)
+
+    local function setState(newItem: Item)
+        itemSource(newItem)
+    end
+
+    return frame, setState, destroy
+end
+
+-- Usage
+local frame, setState, destroy = createItemFrame(initialItem)
+frame.Parent = container
+setState(updatedItem)  -- Updates reactively
+destroy()  -- Cleanup when done
+```
+
+### Helper Functions as Reactive Getters
+
+Define functions inside `root()` that read sources - they become reactive when passed to property bindings:
+
+```luau
+root(function()
+    local itemSource = source(initialItem)
+
+    local function getMutation()
+        return itemSource().mutation  -- reads source
+    end
+
+    local function getDisplayName()
+        return itemSource().name:upper()
+    end
+
+    return create "Frame" {
+        -- Pass function reference directly - creates reactive binding
+        Text = getDisplayName,
+
+        -- Also works with show()
+        show(getMutation, function()
+            return create "TextLabel" { Text = getMutation }
+        end)
+    }
+end)
+```
+
+### Conditional Children with `if then else nil`
+
+For static config-based conditionals (not reactive), use inline `if`:
+
+```luau
+local function ItemFrame(props: { showName: boolean, showIcon: boolean })
+    return create "Frame" {
+        if props.showName then create "TextLabel" {
+            Name = "NameLabel",
+            Text = "Item Name"
+        } else nil,
+
+        if props.showIcon then create "ImageLabel" {
+            Name = "Icon",
+            Image = "rbxassetid://123"
+        } else nil,
+    }
+end
+```
+
+**Note:** Use `show()` for reactive conditionals based on sources. Use `if then else nil` for static config that doesn't change.
+
+### Trove + `cleanup()` in Effects
+
+For complex cleanup in effects, create a Trove and register it with `cleanup()`:
+
+```luau
+effect(function()
+    local item = itemSource()
+
+    local trove = Trove.new()
+    cleanup(function()
+        trove:Destroy()
+    end)
+
+    -- Everything added to trove is cleaned when effect reruns or scope dies
+    local model = trove:Clone(template)
+    model.Parent = viewport
+
+    trove:Connect(someSignal, handler)
+end)
+```
+
+### Accessing Children for Imperative Setup
+
+Separate declarative structure from imperative setup by accessing children after creation:
+
+```luau
+root(function()
+    local frame = create "Frame" {
+        create "ViewportFrame" { Name = "Viewport" },
+    }
+
+    local viewport = frame:FindFirstChild("Viewport") :: ViewportFrame
+
+    -- Imperative setup in separate effect
+    effect(function()
+        local item = itemSource()
+
+        local trove = Trove.new()
+        cleanup(function() trove:Destroy() end)
+
+        setupViewport(viewport, item, trove)
+    end)
+
+    return frame
+end)
+```
+
+### Non-Vide Setup Functions with Trove
+
+Imperative helper functions can work alongside Vide. Pass a Trove for cleanup:
+
+```luau
+-- Plain Luau function, NOT a Vide component
+local function setupViewport(
+    viewport: ViewportFrame,
+    item: Item,
+    trove: typeof(Trove.new())
+)
+    local model = trove:Clone(assets.Template)
+    model.Parent = viewport
+
+    local camera = Instance.new("Camera")
+    camera.Parent = viewport
+    viewport.CurrentCamera = camera
+    trove:Add(camera)
+end
+```
+
 ### Passing Sources as Props
 
 ```luau
@@ -460,3 +611,7 @@ items(table.clone(items()))
 6. **Use cleanup() for connections** to prevent memory leaks
 7. **Mount at the top level** - Create one root scope for your entire UI
 8. **values() needs unique values** - Duplicates cause unexpected behavior
+9. **Use `root()` for factory components** - Return `(instance, setState, destroy)` for externally controllable components
+10. **Use Trove + cleanup() together** - Create Trove in effect, register with `cleanup()` for automatic cleanup on rerun
+11. **Use `if then else nil` for static conditionals** - Use `show()` only when condition is reactive
+12. **Pass function references for reactive bindings** - `Text = getDisplayName` not `Text = getDisplayName()`

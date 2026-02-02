@@ -15,21 +15,49 @@ alwaysApply: true
 --!strict
 --!native
 --!optimize 2
+
 ```
+
+## Code Preservation
+
+- Do NOT clean up, refactor, or reformat existing code unless you are specifically modifying that EXACT section
+- Only clean up a file when explicitly asked to do so
+- Leave surrounding code untouched even if it doesn't match current style conventions
 
 ## Line Length
 
-- When editing lines that reach 80 characters, break them onto multiple lines
+- When editing lines that reach 80 characters, break them onto multiple lines. Very strict on this.
 - Function parameters, long chains, and expressions should be split across lines
 - Only apply this to lines being actively edited, not existing code
 
+## Spacing
+
+- No space before `::` in type casts: `value::any` not `value :: any`
+- No space after `:` in type annotations: `x: number` not `x : number`
+- No spaces inside dictionary type braces: `{[string]: number}` not `{ [string]: number }`
+- Use tabs for indentation (not spaces)
+- Continuation lines are indented with one additional tab
+
 ## Section Banners
 
-- Use 30-dash banners on each side to separate major sections
-- Common section order: Types → Constants → Algorithm/Utils → Class → Module
+- Use exactly 30 dashes on each side with spaces to separate major sections
+- Common sections: Imports → Types → Constants → Asserts → Variables → Algorithm → Implementation → Header → Class → Module
+- Format: `------------------------------ Section Name ------------------------------`
 
 ```luau
------------------------------- Section Name ------------------------------
+------------------------------ Imports ------------------------------
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Bindable = require(ReplicatedStorage.UserGenerated.Concurrency.Bindable)
+
+------------------------------ Types ------------------------------
+type Fields<self> = {}
+
+------------------------------ Constants ------------------------------
+local MAX_VALUE = 100
+
+------------------------------ Class ------------------------------
+local Class = {}::PrivateFunctions<Private>
 ```
 
 ## Naming Conventions
@@ -41,11 +69,11 @@ alwaysApply: true
 
 ```luau
 local function processData(
-    value: string,
-    _timeout: number?
+	value: string,
+	_timeout: number?
 ): boolean
-    local timeout = _timeout or 5
-    -- ...
+	local timeout = _timeout or 5
+	-- ...
 end
 ```
 
@@ -57,27 +85,82 @@ end
 - Use generics including `P...` and `R...` for variadic type packs
 - Validate with `assert`; normalize optional `_args` to locals
 - `pcall` callbacks; log errors with `warn()`
-- Use `error("TypeName", 2)` pattern for assertion errors (level 2 points to caller)
 - Freeze module tables and Class tables; optionally freeze `self`
-- Use local functions to optimize for inlining
+- Use local functions to optimize for inlining, then assign to Class table if needed
 - Static helpers and singletons belong on the module table
-- Always use `table.freeze()` for final module exports
+- Always use `table.freeze()` for final module exports where possible
+- Always use `ipairs` or `pairs` for iteration—never raw `for..in` without an iterator
+- Use `continue` to skip loop iterations instead of nested conditionals
+- Always include trailing commas on the last element of tables—makes adding new entries easier
+- Multi-line imports can be unpacked with continuation indentation using tabs
+- Use `bit32.bor(x, 0)` to ensure 32-bit unsigned integer wraparound
+- Place `assert` calls at the start of functions for parameter validation
+- Use `table.create(size, value)` for preallocation when size is known
+- Use `table.pack()` for variable return values with `n` field for actual count
+- Export module functions can be assigned directly: `module.IsA = IsA`
+- For buffer operations, prefer buffer methods over string conversion when possible
+- Use `table.concat(parts)` instead of repeated string concatenation
+
+```luau
+-- Trailing commas
+local items = {
+	"first",
+	"second",
+	"third", -- trailing comma
+}
+
+-- Multi-line import unpacking for frequently used functions
+local bxor, bor, band, lshift, rshift
+	= bit32.bxor, bit32.bor, bit32.band, bit32.lshift, bit32.rshift
+local huge, pi, floor, ldexp, sqrt, log, max, sin, cos, clamp
+	= math.huge, math.pi, math.floor, math.ldexp, math.sqrt, math.log,
+		math.max, math.sin, math.cos, math.clamp
+
+-- WRONG: Raw iteration
+for _, effect in activeEffects do
+	table.insert(effects, effect)
+end
+
+-- CORRECT: Use ipairs for arrays
+for _, effect in ipairs(activeEffects) do
+	table.insert(effects, effect)
+end
+
+-- CORRECT: Use pairs for dictionaries
+for key, value in pairs(data) do
+	print(key, value)
+end
+
+-- Use continue to simplify loop logic
+for i = 1, 10 do
+	if i % 2 == 0 then continue end
+	print(i) -- Only odd numbers
+end
+```
 
 ## Documentation
 
 - Use `--[[...]]` for multi-line docstrings above functions
 - Include `@param` and `@return` descriptions for complex functions
 - Keep comments concise; code should be self-documenting
+- Use TODO comments with priority levels: `-- TODO(low):`, `-- TODO(high):`, `-- TODO(optimize):`
+- Use `--stylua: ignore` to disable stylua formatting for specific lines (e.g., large data tables)
 
 ```luau
+-- TODO(low): Implement cycle detection
+-- TODO(optimize): convert all functions to local functions!
+
 --[[
-    Validates and normalizes input data.
-    @param value Input value to validate
-    @param rules Validation rules to apply
-    @return Normalized value or error
+    TODO(low): Implement cycle detection
+    TODO(optimize): convert all functions to local functions!
+
+	Validates and normalizes input data.
+	@param value Input value to validate
+	@param rules Validation rules to apply
+	@return Normalized value or error
 ]]
 local function validate(value: string, rules: {Rule}): Result
-    -- ...
+	-- ...
 end
 ```
 
@@ -101,6 +184,16 @@ export type Type = Fields<Type> & Functions<Type>
 type Private = PrivateFields<Private> & PrivateFunctions<Private>
 ```
 
+For performance-critical code, private field names can be abbreviated with comments:
+
+```luau
+type PrivateFields<self> = Fields<self> & {
+	Ow: any?, -- Owner
+	Cb: (...any) -> (...any), -- Callback
+	Pr: number, -- Priority
+}
+```
+
 For generic classes with variadic type packs:
 
 ```luau
@@ -113,12 +206,13 @@ type Private<P... = ...any, R... = ...any> =
 ### Class Implementation
 
 ```luau
-local Class = {} :: PrivateFunctions<Private>
+------------------------------ Class ------------------------------
+local Class = {}::PrivateFunctions<Private>
 local Metatable = table.freeze({ __index = Class })
 
 -- Local functions for inlining, then assign to Class
 local function Foo(self: Private, ...): T
-    ...
+	...
 end
 Class.Foo = Foo
 
@@ -127,23 +221,26 @@ table.freeze(Class)
 
 ### Module Export
 
+Always export `IsA` and `Assert` helper functions for type checking:
+
 ```luau
+------------------------------ Module ------------------------------
 local function IsA(v: Type): boolean
-    return type(v) == "table" and getmetatable(v :: any) == Metatable
+	return type(v) == "table" and getmetatable(v::any) == Metatable
 end
 
 local function Assert(v: Type): Type
-    if not IsA(v) then error("<ClassName>", 2) end
-    return v
+	if not IsA(v) then error("<ClassName>", 2) end
+	return v
 end
 
 local module = {}
 
 function module.new(...): Type
-    local fields: PrivateFields<Private> = { ... }
-    local self: Private = setmetatable(fields, Metatable) :: any
-    -- ...init...
-    return self
+	local fields: PrivateFields<Private> = { ... }
+	local self: Private = setmetatable(fields, Metatable)::any
+	-- ...init...
+	return self
 end
 
 module.IsA = IsA
@@ -152,15 +249,50 @@ module.Assert = Assert
 return table.freeze(module)
 ```
 
+The `IsA` function uses metatable identity checking for fast, reliable type validation.
+The `Assert` function provides runtime type checking with proper error levels.
+
 ## Type Safety
 
 - Strive for zero type errors in every file for good static analysis
-- Avoid `:: any` unless absolutely necessary (e.g., metatable assignment)
+- Avoid `::any` unless absolutely necessary (e.g., metatable assignment)
 - Do not fix existing type errors unless explicitly asked
 
 ```luau
--- Only use :: any when required, such as complex setmetatable
-local self: Private = setmetatable(fields, Metatable) :: any
+-- Only use ::any when required, such as complex setmetatable
+local self: Private = setmetatable(fields, Metatable)::any
+```
+
+## Common Patterns
+
+### Helper Functions
+
+Place helper functions before the section where they're used:
+
+```luau
+------------------------------ Utils ------------------------------
+local function helperFunction(x: number): number
+	return x * 2
+end
+
+------------------------------ Class ------------------------------
+local Class = {}::PrivateFunctions<Private>
+
+function Class:Method()
+	return helperFunction(self.Value)
+end
+```
+
+### Module Singletons
+
+For shared state or singleton instances, add them to the module table:
+
+```luau
+local module = {}
+
+module.R = module.Unique() -- Singleton random generator
+
+return table.freeze(module)
 ```
 
 ## Game Logic
@@ -174,6 +306,6 @@ Focus on modular, reusable, and simple code:
 
 ## Validation
 
-For runtime type assertions, see `.cursor/rules/asserts.mdc`.
+For runtime type assertions, see @asserts.mdc
 
 Especially important for networking—always validate data received from remotes.
