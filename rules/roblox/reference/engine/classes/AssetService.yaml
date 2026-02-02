@@ -329,9 +329,9 @@ methods:
       If the device-specific editable memory budget is exhausted, creation will
       fail and this method will return `nil`.
 
-      See the **Enabling EditableMesh for Published Experiences** and
-      **Permissions** sections of `Class.EditableMesh` for special
-      considerations when using this API.
+      See the **Enabling for Published Experiences** and **Permissions**
+      sections of `Class.EditableMesh` for special considerations when using
+      this API.
     code_samples: []
     parameters:
       - name: content
@@ -766,9 +766,8 @@ methods:
 
       Unlike `Class.InsertService:LoadAsset()`, this method can load public
       assets created by **third parties** (assets not owned by the experience
-      creator). To enable this functionality, you must first enable the **Allow
-      Loading Third Party Assets** setting in **Home > Game Settings >
-      Security**.
+      creator). To enable this functionality, toggle on **Allow Loading Third
+      Party Assets** in Studio's **Experience Settings**.
 
       If this setting is disabled (which it is by default), `LoadAssetAsync`
       will only load assets that are owned by the experience creator, behaving

@@ -601,9 +601,18 @@ properties:
       `Lighting`.
     description: |
       A 24-hour string representation of the current time of day used by
-      `Lighting`. Note that this property does not correspond with the actual
-      time of day and will not change during gameplay unless it has been changed
-      by a script.
+      `Lighting`. For example:
+
+      ```lua
+      local Lighting = game:GetService("Lighting")
+
+      Lighting.TimeOfDay = "11:00" -- Set time of day to 11:00 AM
+      Lighting.TimeOfDay = "21:30" -- Set time of day to 9:30 PM
+      ```
+
+      Note that this property does not correspond with the real-world time of
+      day and will not change during gameplay unless it has been changed by a
+      script.
 
       For a numeric measure of `Lighting` time, use
       `Class.Lighting.ClockTime|ClockTime`. Changing

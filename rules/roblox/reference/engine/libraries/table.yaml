@@ -55,6 +55,16 @@ functions:
       Returns a shallow copy of the provided table.
     description: |
       Returns an unfrozen shallow copy of the provided table.
+
+      ```lua
+      local original = {
+      	key = "value",
+      	engine = "Roblox",
+      	playerID = 505306092
+      }
+
+      local clone = table.clone(original)
+      ```
     parameters:
       - name: t
         type: table
