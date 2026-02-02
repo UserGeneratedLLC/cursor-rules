@@ -1,0 +1,4 @@
+# Ignore project-specific files in these folders
+rules/project-*
+commands/project-*
+plans/project-*
