@@ -28,6 +28,14 @@ $repos = @(
     }
 )
 
+# Single file downloads: Url, Target
+$files = @(
+    @{
+        Url = "https://raw.githubusercontent.com/UserGeneratedLLC/rojo/refs/heads/master/.cursor/rules/rojo-project.mdc"
+        Target = "rules/rojo-project.mdc"
+    }
+)
+
 # Get script directory (workspace root)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
@@ -90,6 +98,30 @@ foreach ($repo in $repos) {
         Write-Host "  Cleaning up temp files..." -ForegroundColor Gray
         if (Test-Path $tempZip) { Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue }
         if (Test-Path $tempExtract) { Remove-Item -Path $tempExtract -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+# Download single files
+foreach ($file in $files) {
+    $targetPath = Join-Path $scriptDir $file.Target
+    $fileName = Split-Path -Leaf $file.Target
+
+    Write-Host ""
+    Write-Host "Processing: $fileName" -ForegroundColor Yellow
+    Write-Host "  Source: $($file.Url)"
+    Write-Host "  Target: $($file.Target)"
+
+    try {
+        Write-Host "  Downloading..." -ForegroundColor Gray
+        $targetDir = Split-Path -Parent $targetPath
+        if (-not (Test-Path $targetDir)) {
+            New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+        }
+        curl.exe -sL $file.Url -o $targetPath
+        Write-Host "  Done!" -ForegroundColor Green
+    } catch {
+        Write-Host "  ERROR: $_" -ForegroundColor Red
+        exit 1
     }
 }
 

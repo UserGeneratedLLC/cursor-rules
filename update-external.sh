@@ -74,10 +74,33 @@ sync_repo() {
     echo -e "${GREEN}  Done!${NC}"
 }
 
+# Function to download a single file
+download_file() {
+    local url="$1"
+    local target="$2"
+    
+    local target_path="$SCRIPT_DIR/$target"
+    local file_name=$(basename "$target")
+    
+    echo ""
+    echo -e "${YELLOW}Processing: $file_name${NC}"
+    echo "  Source: $url"
+    echo "  Target: $target"
+    
+    echo -e "${GRAY}  Downloading...${NC}"
+    mkdir -p "$(dirname "$target_path")"
+    curl -sL "$url" -o "$target_path"
+    
+    echo -e "${GREEN}  Done!${NC}"
+}
+
 # Sync each repository (owner, repo, branch, subdir, target)
 sync_repo "luau-lang" "rfcs" "master" "docs" "rules/luau"
 sync_repo "Roblox" "creator-docs" "main" "content" "rules/roblox"
 sync_repo "centau" "vide" "main" "docs" "rules/vide"
+
+# Download single files
+download_file "https://raw.githubusercontent.com/UserGeneratedLLC/rojo/refs/heads/master/.cursor/rules/rojo-project.mdc" "rules/rojo-project.mdc"
 
 echo ""
 echo -e "${GREEN}Sync completed successfully!${NC}"
