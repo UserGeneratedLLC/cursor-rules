@@ -72,9 +72,13 @@ foreach ($repo in $repos) {
         # Create target directory
         New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
 
-        # Copy new files
-        Write-Host "  Copying new files..." -ForegroundColor Gray
-        Copy-Item -Path "$sourceSubdir\*" -Destination $targetPath -Recurse -Force
+        # Move new files (faster than copy since we delete temp anyway)
+        Write-Host "  Moving files..." -ForegroundColor Gray
+        robocopy $sourceSubdir $targetPath /E /MOVE /NFL /NDL /NJH /NJS /NC /NS /NP > $null
+        # Robocopy exit codes < 8 are success (1=files copied, 2=extras, etc.)
+        if ($LASTEXITCODE -ge 8) {
+            throw "robocopy failed with exit code $LASTEXITCODE"
+        }
 
         Write-Host "  Done!" -ForegroundColor Green
 
@@ -91,3 +95,4 @@ foreach ($repo in $repos) {
 
 Write-Host ""
 Write-Host "Sync completed successfully!" -ForegroundColor Green
+exit 0
