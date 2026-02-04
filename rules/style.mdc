@@ -83,7 +83,7 @@ end
 
 - Always type function parameters and return values—this enables inference everywhere else
 - Don't redundantly annotate locals when the type is inferred (e.g., `local x = 3` not `local x: number = 3`)
-- Use `T?` for optional types
+- Use `T?` for optional types—NEVER use `T | nil` (e.g., `number?` not `number | nil`)
 - Use generics including `P...` and `R...` for variadic type packs
 - Validate with `assert`; normalize optional `_args` to locals
 - `pcall` callbacks; log errors with `warn()`
@@ -253,19 +253,19 @@ local Metatable = table.freeze({ __index = Class })
 Always export `IsA` and `Assert` helper functions for type checking:
 
 ```luau
------------------------------- Module ------------------------------
-
-local function IsA(v: any): boolean
-	return type(v) == "table" and getmetatable(v) == Metatable
+------------------------------ Helpers ------------------------------
+local function IsA(v: Type): boolean
+	return type(v) == "table" and getmetatable(v::any) == Metatable
 end
 
-local function Assert(v: any): Type
+local function Assert(v: Type): Type
 	if not IsA(v) then error("<ClassName>", 2) end
 	return v
 end
 
 -- Params type and AssertParams go here (see Constructor Params)
 
+------------------------------ Module ------------------------------
 local module = {}
 
 function module.new(params: Params): Type
