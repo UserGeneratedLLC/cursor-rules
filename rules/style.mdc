@@ -63,7 +63,7 @@ local Class = {}::PrivateFunctions<Private>
 ## Naming Conventions
 
 - Use camelCase for local functions, variables, and parameters
-- Use PascalCase for module functions and class methods
+- Use PascalCase for module functions, class methods, and class fields (both public and private)
 - Prefix optional parameters with `_` (e.g., `_timeout: number?`), then normalize to local without prefix
 - Use ALL_CAPS for true constants only
 
@@ -174,11 +174,27 @@ For multi-class modules, prefix type names with the class name:
 
 ### Type Structure
 
+All field and method names use PascalCase, regardless of visibility:
+
 ```luau
-type Fields<self> = { ... }
-type Functions<self> = { ... }
-type PrivateFields<self> = Fields<self> & { ... }
-type PrivateFunctions<self> = Functions<self> & { ... }
+type Fields<self> = {
+	Value: number,
+	Name: string,
+}
+
+type Functions<self> = {
+	GetValue: (self) -> number,
+	SetName: (self, name: string) -> (),
+}
+
+type PrivateFields<self> = Fields<self> & {
+	InternalState: boolean,
+	Connection: RBXScriptConnection?,
+}
+
+type PrivateFunctions<self> = Functions<self> & {
+	UpdateInternal: (self) -> (),
+}
 
 export type Type = Fields<Type> & Functions<Type>
 type Private = PrivateFields<Private> & PrivateFunctions<Private>
@@ -270,7 +286,7 @@ local self: Private = setmetatable(fields, Metatable)::any
 Place helper functions before the section where they're used:
 
 ```luau
------------------------------- Utils ------------------------------
+------------------------------ Helpers ------------------------------
 local function helperFunction(x: number): number
 	return x * 2
 end
@@ -278,9 +294,10 @@ end
 ------------------------------ Class ------------------------------
 local Class = {}::PrivateFunctions<Private>
 
-function Class:Method()
+local function DoSomething(self: Private): number
 	return helperFunction(self.Value)
 end
+Class.DoSomething = DoSomething
 ```
 
 ### Module Singletons
