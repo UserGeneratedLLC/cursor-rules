@@ -54,18 +54,20 @@ local Bindable = require(ReplicatedStorage.UserGenerated.Concurrency.Bindable)
 type Fields<self> = {}
 
 ------------------------------ Constants ------------------------------
-local MAX_VALUE = 100
+local MaxValue = 100
 
 ------------------------------ Class ------------------------------
-local Class = {}::PrivateFunctions<Private>
+-- ...
 ```
 
 ## Naming Conventions
 
-- Use camelCase for local functions, variables, and parameters
-- Use PascalCase for module functions, class methods, and class fields (both public and private)
+- Use PascalCase for:
+  - Module-level local functions (`LerpEN`, `ProcessData`)
+  - Module-level local variables/constants (`DefaultDuration`, `MaxRetries`)
+  - Module functions, class methods, and class fields (both public and private)
+- Use camelCase only for function-local variables and parameters
 - Prefix optional parameters with `_` (e.g., `_timeout: number?`), then normalize to local without prefix
-- Use ALL_CAPS for true constants only
 
 ```luau
 local function processData(
@@ -174,30 +176,27 @@ For multi-class modules, prefix type names with the class name:
 
 ### Type Structure
 
-All field and method names use PascalCase, regardless of visibility:
+All field and method names use PascalCase, regardless of visibility.
+Keep class type definitions in a bulk block with no blank lines between them.
+Always use `Type` for the export (so users can do `Module.Type`).
+No `PrivateFunctions` type - private functions are just local functions called directly (not via `self:`):
 
 ```luau
 type Fields<self> = {
 	Value: number,
 	Name: string,
 }
-
 type Functions<self> = {
 	GetValue: (self) -> number,
 	SetName: (self, name: string) -> (),
 }
-
 type PrivateFields<self> = Fields<self> & {
 	InternalState: boolean,
 	Connection: RBXScriptConnection?,
 }
 
-type PrivateFunctions<self> = Functions<self> & {
-	UpdateInternal: (self) -> (),
-}
-
 export type Type = Fields<Type> & Functions<Type>
-type Private = PrivateFields<Private> & PrivateFunctions<Private>
+type Private = PrivateFields<Private>
 ```
 
 For performance-critical code, private field names can be abbreviated with comments:
@@ -221,18 +220,32 @@ type Private<P... = ...any, R... = ...any> =
 
 ### Class Implementation
 
+Define local functions first, then build and freeze the Class table with only public methods.
+Private functions are just local functions called directly (not added to Class):
+
 ```luau
 ------------------------------ Class ------------------------------
-local Class = {}::PrivateFunctions<Private>
-local Metatable = table.freeze({ __index = Class })
 
--- Local functions for inlining, then assign to Class
-local function Foo(self: Private, ...): T
-	...
+-- Private function (not added to Class)
+local function UpdateInternal(self: Private)
+	-- ...
 end
-Class.Foo = Foo
 
-table.freeze(Class)
+-- Public functions
+local function Foo(self: Private, ...): T
+	UpdateInternal(self) -- Call directly, not self:UpdateInternal()
+	-- ...
+end
+
+local function Bar(self: Private): number
+	return self.Value
+end
+
+local Class: Functions<Private> = table.freeze({
+	Foo = Foo,
+	Bar = Bar,
+})
+local Metatable = table.freeze({ __index = Class })
 ```
 
 ### Module Export
@@ -241,22 +254,22 @@ Always export `IsA` and `Assert` helper functions for type checking:
 
 ```luau
 ------------------------------ Module ------------------------------
-local function IsA(v: Type): boolean
-	return type(v) == "table" and getmetatable(v::any) == Metatable
+
+local function IsA(v: any): boolean
+	return type(v) == "table" and getmetatable(v) == Metatable
 end
 
-local function Assert(v: Type): Type
+local function Assert(v: any): Type
 	if not IsA(v) then error("<ClassName>", 2) end
 	return v
 end
 
+-- Params type and AssertParams go here (see Constructor Params)
+
 local module = {}
 
-function module.new(...): Type
-	local fields: PrivateFields<Private> = { ... }
-	local self: Private = setmetatable(fields, Metatable)::any
-	-- ...init...
-	return self
+function module.new(params: Params): Type
+	-- ...
 end
 
 module.IsA = IsA
@@ -267,6 +280,43 @@ return table.freeze(module)
 
 The `IsA` function uses metatable identity checking for fast, reliable type validation.
 The `Assert` function provides runtime type checking with proper error levels.
+
+### Constructor Params
+
+When a class has a constructor that takes a params table, use `Params` (not `Config`):
+
+1. Define an exported `Params` type after `IsA`/`Assert` helpers
+2. Place `AssertParams` validator immediately after (no blank line)
+3. Place `local module = {}` after the params
+4. Validate params at the start of `module.new()`
+
+```luau
+export type Params = {
+	Callback: (value: number) -> (),
+	Duration: number?,
+	EasingStyle: Enum.EasingStyle?,
+}
+local AssertParams = Asserts.Table({
+	Callback = Asserts.Function,
+	Duration = Asserts.Optional(Asserts.FinitePositive),
+	EasingStyle = Asserts.Optional(Asserts.Enum(Enum.EasingStyle)),
+})
+
+local module = {}
+
+function module.new(params: Params): Type
+	AssertParams(params)
+
+	local fields: PrivateFields<Private> = {
+		Callback = params.Callback,
+		Duration = params.Duration or DefaultDuration,
+		EasingStyle = params.EasingStyle or DefaultEasingStyle,
+		-- Don't initialize nil fields - they're implicit
+	}
+	local self: Private = setmetatable(fields, Metatable)::any
+	return self
+end
+```
 
 ## Type Safety
 
