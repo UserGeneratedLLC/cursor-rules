@@ -16,6 +16,22 @@ local FastFlags = require(ReplicatedStorage.UserGenerated.FastFlags)
 
 ---
 
+## Single Instantiation Rule
+
+**Each flag definition (`Private` or `Replicated`) must NEVER be instantiated more than once per runtime.** Calling `FastFlags.Private(key, ...)` or `FastFlags.Replicated(key, ...)` with the same key twice on the same side (client or server) will throw a `ConflictingKeys` error. There is no way to recover from this — it is a hard error.
+
+Client and server are separate runtimes, so a `Replicated` flag can be registered once on the server and once on the client (this is expected). But within the same runtime, a key must only be registered exactly once.
+
+### Where to Place Flag Definitions
+
+**Replicated flags:** Place them in a **shared module** under ReplicatedStorage. Both server and client require the same module, and since `require` caches module results, the flag is only instantiated once per side. This is the recommended pattern for all `Replicated` flags.
+
+**Private flags used by one module:** Define them directly in that module.
+
+**Private flags used by multiple server modules:** Do **not** duplicate the definition across modules — this will error. Instead, define the flag in a **single shared location** on the server. Typically, the service module the flag is most closely related to is the right place (e.g. if a flag controls save behavior, define it in the Saves service module). Other modules that need the flag should require it from there. Be mindful of **cyclic dependencies** — if placing the flag in a service would create a circular require chain, extract it into a dedicated flags module that both services can require.
+
+---
+
 ## API Reference
 
 ### Creating Flags (Server Only)
