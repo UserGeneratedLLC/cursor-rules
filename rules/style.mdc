@@ -26,8 +26,10 @@ alwaysApply: true
 
 ## Line Length
 
-- When editing lines that reach 80 characters, break them onto multiple lines. Very strict on this.
-- Function parameters, long chains, and expressions should be split across lines
+- Hard limit: 80 characters per line. Break lines that exceed this.
+- Do NOT break lines that fit within 80 characters. Keep them on one line.
+- If a line was previously split across multiple lines but fits within 80 characters on one line, collapse it back to one line.
+- This applies to everything: function calls, return statements, conditions, callbacks, require paths, etc.—if it fits on one line, it stays on one line.
 - Only apply this to lines being actively edited, not existing code
 
 ## Spacing
