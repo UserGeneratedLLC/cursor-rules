@@ -32,7 +32,7 @@ $repos = @(
 $files = @(
     @{
         Url = "https://raw.githubusercontent.com/UserGeneratedLLC/rojo/refs/heads/master/.cursor/rules/rojo-project.mdc"
-        Target = "rules/rojo-project.mdc"
+        Target = "rules/atlas-project.mdc"
     }
 )
 

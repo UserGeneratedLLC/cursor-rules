@@ -100,7 +100,7 @@ sync_repo "Roblox" "creator-docs" "main" "content" "rules/roblox"
 sync_repo "centau" "vide" "main" "docs" "rules/vide"
 
 # Download single files
-download_file "https://raw.githubusercontent.com/UserGeneratedLLC/rojo/refs/heads/master/.cursor/rules/rojo-project.mdc" "rules/rojo-project.mdc"
+download_file "https://raw.githubusercontent.com/UserGeneratedLLC/rojo/refs/heads/master/.cursor/rules/rojo-project.mdc" "rules/atlas-project.mdc"
 
 echo ""
 echo -e "${GREEN}Sync completed successfully!${NC}"
