@@ -31,7 +31,7 @@ $repos = @(
 # Single file downloads: Url, Target
 $files = @(
     @{
-        Url = "https://raw.githubusercontent.com/UserGeneratedLLC/rojo/refs/heads/master/.cursor/rules/rojo-project.mdc"
+        Url = "https://raw.githubusercontent.com/UserGeneratedLLC/rojo/refs/heads/master/.cursor/rules/atlas-project.mdc"
         Target = "rules/atlas-project.mdc"
     }
 )
