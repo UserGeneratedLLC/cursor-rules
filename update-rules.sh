@@ -9,7 +9,7 @@ set -e
 # Configuration
 REPO_URL="git@github.com:UserGeneratedLLC/cursor-rules.git"
 FORCE_DELETE_DIRS=("luau" "roblox" "vide")
-SELF_UPDATE_FILES=("update-rules.ps1" "update-rules.sh")
+SELF_UPDATE_FILES=("update-rules.ps1" "update-rules.sh" "update-external.ps1" "update-external.sh")
 
 # Resolve paths: script lives at <project>/.cursor/update-rules.sh
 CURSOR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

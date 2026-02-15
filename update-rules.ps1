@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 $repoUrl = "git@github.com:UserGeneratedLLC/cursor-rules.git"
 $forceDeleteDirs = @("luau", "roblox", "vide")
-$selfUpdateFiles = @("update-rules.ps1", "update-rules.sh")
+$selfUpdateFiles = @("update-rules.ps1", "update-rules.sh", "update-external.ps1", "update-external.sh")
 
 # Resolve paths: script lives at <project>/.cursor/update-rules.ps1
 $cursorDir = Split-Path -Parent $MyInvocation.MyCommand.Path
