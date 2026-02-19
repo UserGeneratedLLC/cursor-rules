@@ -1,4 +1,4 @@
-# update-rules.ps1
+# update.ps1
 # Syncs shared Cursor rules and commands from the cursor-rules repo.
 # Place this script in your project's .cursor/ directory and run it to update.
 # The script self-updates on each run.
@@ -7,16 +7,16 @@ $ErrorActionPreference = "Stop"
 
 # Configuration
 $repoUrl = "git@github.com:UserGeneratedLLC/cursor-rules.git"
-$forceDeleteDirs = @("luau", "roblox", "vide")
-$selfUpdateFiles = @("update-rules.ps1", "update-rules.sh", "update-external.ps1", "update-external.sh")
+$forceDeleteDirs = @("luau", "luau-rfcs", "roblox", "vide")
+$selfUpdateFiles = @("update.ps1", "update.sh", "sync-sources.ps1", "sync-sources.sh")
 
-# Resolve paths: script lives at <project>/.cursor/update-rules.ps1
+# Resolve paths: script lives at <project>/.cursor/update.ps1
 $cursorDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $rulesDir = Join-Path $cursorDir "rules"
 $commandsDir = Join-Path $cursorDir "commands"
 
 # Temp directory for clone
-$tempDir = Join-Path $env:TEMP "update-rules-$(Get-Random)"
+$tempDir = Join-Path $env:TEMP "cursor-rules-update-$(Get-Random)"
 
 Write-Host "Updating Cursor rules..." -ForegroundColor Cyan
 Write-Host "  Repo: $repoUrl"
@@ -91,7 +91,7 @@ try {
         Write-Host "  Done!" -ForegroundColor Green
     }
 
-    # --- Self-update: Copy update-rules scripts from repo root ---
+    # --- Self-update: Copy scripts from repo root ---
     Write-Host ""
     Write-Host "Self-updating scripts..." -ForegroundColor Yellow
 

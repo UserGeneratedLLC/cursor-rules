@@ -1,4 +1,4 @@
-# update-external.ps1
+# sync-sources.ps1
 # Syncs external documentation from GitHub repos into the rules directory
 
 $ErrorActionPreference = "Stop"
@@ -10,6 +10,13 @@ $repos = @(
         Repo = "rfcs"
         Branch = "master"
         Subdir = "docs"
+        Target = "rules/luau-rfcs"
+    },
+    @{
+        Owner = "luau-lang"
+        Repo = "site"
+        Branch = "master"
+        Subdir = "src/content/docs"
         Target = "rules/luau"
     },
     @{

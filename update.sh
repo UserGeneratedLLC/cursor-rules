@@ -1,5 +1,5 @@
 #!/bin/bash
-# update-rules.sh
+# update.sh
 # Syncs shared Cursor rules and commands from the cursor-rules repo.
 # Place this script in your project's .cursor/ directory and run it to update.
 # The script self-updates on each run.
@@ -8,10 +8,10 @@ set -e
 
 # Configuration
 REPO_URL="git@github.com:UserGeneratedLLC/cursor-rules.git"
-FORCE_DELETE_DIRS=("luau" "roblox" "vide")
-SELF_UPDATE_FILES=("update-rules.ps1" "update-rules.sh" "update-external.ps1" "update-external.sh")
+FORCE_DELETE_DIRS=("luau" "luau-rfcs" "roblox" "vide")
+SELF_UPDATE_FILES=("update.ps1" "update.sh" "sync-sources.ps1" "sync-sources.sh")
 
-# Resolve paths: script lives at <project>/.cursor/update-rules.sh
+# Resolve paths: script lives at <project>/.cursor/update.sh
 CURSOR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RULES_DIR="$CURSOR_DIR/rules"
 COMMANDS_DIR="$CURSOR_DIR/commands"
@@ -96,7 +96,7 @@ if [ -d "$CLONE_COMMANDS_DIR" ]; then
     echo -e "${GREEN}  Done!${NC}"
 fi
 
-# --- Self-update: Copy update-rules scripts from repo root ---
+# --- Self-update: Copy scripts from repo root ---
 echo ""
 echo -e "${YELLOW}Self-updating scripts...${NC}"
 

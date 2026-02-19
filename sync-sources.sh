@@ -1,5 +1,5 @@
 #!/bin/bash
-# update-external.sh
+# sync-sources.sh
 # Syncs external documentation from GitHub repos into the rules directory
 
 set -e
@@ -95,7 +95,8 @@ download_file() {
 }
 
 # Sync each repository (owner, repo, branch, subdir, target)
-sync_repo "luau-lang" "rfcs" "master" "docs" "rules/luau"
+sync_repo "luau-lang" "rfcs" "master" "docs" "rules/luau-rfcs"
+sync_repo "luau-lang" "site" "master" "src/content/docs" "rules/luau"
 sync_repo "Roblox" "creator-docs" "main" "content" "rules/roblox"
 sync_repo "centau" "vide" "main" "docs" "rules/vide"
 
