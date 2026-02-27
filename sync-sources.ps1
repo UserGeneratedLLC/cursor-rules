@@ -66,7 +66,7 @@ foreach ($repo in $repos) {
     try {
         # Download zip archive
         Write-Host "  Downloading archive..." -ForegroundColor Gray
-        curl.exe -sL $zipUrl -o $tempZip
+        Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
 
         # Extract zip (using tar for speed, built into Windows 10+)
         Write-Host "  Extracting..." -ForegroundColor Gray
@@ -124,7 +124,7 @@ foreach ($file in $files) {
         if (-not (Test-Path $targetDir)) {
             New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
         }
-        curl.exe -sL $file.Url -o $targetPath
+        Invoke-WebRequest -Uri $file.Url -OutFile $targetPath -UseBasicParsing
         Write-Host "  Done!" -ForegroundColor Green
     } catch {
         Write-Host "  ERROR: $_" -ForegroundColor Red
