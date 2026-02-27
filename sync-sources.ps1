@@ -2,6 +2,7 @@
 # Syncs external documentation from GitHub repos into the rules directory
 
 $ErrorActionPreference = "Stop"
+$ProgressPreference = 'SilentlyContinue'
 
 # Configuration: Owner, Repo, Branch, Subdir, Target
 $repos = @(
@@ -66,7 +67,7 @@ foreach ($repo in $repos) {
     try {
         # Download zip archive
         Write-Host "  Downloading archive..." -ForegroundColor Gray
-        Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
+        (New-Object System.Net.WebClient).DownloadFile($zipUrl, $tempZip)
 
         # Extract zip (using tar for speed, built into Windows 10+)
         Write-Host "  Extracting..." -ForegroundColor Gray
@@ -130,6 +131,23 @@ foreach ($file in $files) {
         Write-Host "  ERROR: $_" -ForegroundColor Red
         exit 1
     }
+}
+
+# Roblox Full API Dump (dynamic: resolve latest build GUID first)
+Write-Host ""
+Write-Host "Processing: Full-API-Dump.json" -ForegroundColor Yellow
+try {
+    $latestMeta = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/RobloxAPI/build-archive/master/data/production/latest.json" -UseBasicParsing | ConvertFrom-Json
+    $guid = $latestMeta.GUID
+    Write-Host "  GUID: $guid  Version: $($latestMeta.Version)"
+    $dumpUrl = "https://raw.githubusercontent.com/RobloxAPI/build-archive/master/data/production/builds/$guid/Full-API-Dump.json"
+    $dumpTarget = Join-Path $scriptDir "rules/roblox-api/Full-API-Dump.json"
+    New-Item -ItemType Directory -Path (Split-Path -Parent $dumpTarget) -Force | Out-Null
+    (New-Object System.Net.WebClient).DownloadFile($dumpUrl, $dumpTarget)
+    Write-Host "  Done!" -ForegroundColor Green
+} catch {
+    Write-Host "  ERROR: $_" -ForegroundColor Red
+    exit 1
 }
 
 Write-Host ""
