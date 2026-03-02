@@ -47,7 +47,8 @@ local value = validatePositiveInt(input)
 | `IntegerPositive(x)` | Integer >= 1 |
 | `IntegerNonNegative(x)` | Integer >= 0 |
 | `Index(x)` | Alias for IntegerPositive |
-| `Unsigned32(x)` | 32-bit unsigned integer |
+| `Unsigned32(x)` | 32-bit unsigned integer (direct validator) |
+| `UInt32` | Returns a validator for 32-bit unsigned integers (factory) |
 | `Range(a, b)` | Returns validator for [a, b] |
 | `IntegerRange(a, b)` | Returns validator for integer [a, b] |
 
@@ -78,6 +79,7 @@ local value = validatePositiveInt(input)
 | `UDim(x)`, `UDim2(x)`, `Rect(x)` | UI types |
 | `Region3(x)`, `Region3int16(x)` | Region types |
 | `Vector2int16(x)`, `Vector3int16(x)` | Integer vector types |
+| `PhysicalProperties(x)` | PhysicalProperties validation |
 
 ## Instances
 
@@ -117,6 +119,9 @@ local validateUniqueStrings = Asserts.UniqueArray(Asserts.String)
 -- Transform elements (Coerce variants)
 local toIntegers = Asserts.ArrayCoerce(Asserts.ToNumber(Asserts.Integer))
 local nums = toIntegers({"1", "2", "3"}) -- {1, 2, 3}
+
+-- Unique array with coercion
+local toUniqueInts = Asserts.UniqueArrayCoerce(Asserts.ToNumber(Asserts.Integer))
 ```
 
 ### Maps
@@ -128,6 +133,9 @@ local scores = validateScores({alice = 100, bob = 200})
 
 -- Optional length limit
 local limitedMap = Asserts.Map(Asserts.String, Asserts.Any, 10)
+
+-- Map with key/value coercion
+local coercedMap = Asserts.MapCoerce(Asserts.String, Asserts.ToNumber(Asserts.Integer))
 ```
 
 ### Tables (Structured Objects)
@@ -202,6 +210,17 @@ if Asserts.IsASCII(s) then ... end
 if Asserts.IsCFrameFinite(cf) then ... end
 if Asserts.IsVector2Finite(v) then ... end
 if Asserts.IsVector3Finite(v) then ... end
+```
+
+## Exported Types
+
+```luau
+Asserts.Map<K, V>            -- Type returned by Map validator
+Asserts.MapCoerce<K, V, K2, V2> -- Type returned by MapCoerce validator
+Asserts.Table<T>             -- Type returned by Table validator
+Asserts.TableCoerce<T, T2>  -- Type returned by TableCoerce validator
+Asserts.Storable             -- DataStore-compatible value type
+Asserts.Networkable          -- Network-replicable value type
 ```
 
 ## Error Handling
